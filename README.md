@@ -10,4 +10,7 @@ How to use it:
 
 4. Input "upload + [filename]" to upload your file
 
-5. You can see your file in DirectoryServerFiles folder.
+5. Use directory and lock command to open the directory and lock service.
+
+6. You can see your file in DirectoryServerFiles folder.
+
