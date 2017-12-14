@@ -13,20 +13,20 @@ from tcpServer import TCPServer
 
 
 class LockServer(TCPServer):
-    LOCK_REGEX = "LOCK_FILE: [a-zA-Z0-9_./]*\nTime: [0-9]*\n\n"
-    UNLOCK_REGEX = "UNLOCK_FILE: [a-zA-Z0-9_./]*\n\n"
-    LOCK_RESPONSE = "LOCK_RESPONSE: \nFILENAME: %s\nTIME: %d\n\n"
-    FAIL_RESPONSE = "ERROR: %d\nMESSAGE: %s\n\n"
-    DATABASE = 'Database/locking.db'
+    Lock_info = "LOCK_FILE: [a-zA-Z0-9_./]*\nTime: [0-9]*\n\n"
+    Unlock_info = "UNLOCK_FILE: [a-zA-Z0-9_./]*\n\n"
+    Lock_rep = "LOCK_RESPONSE: \nFILENAME: %s\nTIME: %d\n\n"
+    Fail_rep = "ERROR: %d\nMESSAGE: %s\n\n"
+    Database_path_name = 'Database/locking.db'
 
     def __init__(self, port_use=None):
         TCPServer.__init__(self, port_use, self.handler)
         self.create_table()
 
     def handler(self, message, con, addr):
-        if re.match(self.LOCK_REGEX, message):
+        if re.match(self.Lock_info, message):
             self.get_lock(con, addr, message)
-        elif re.match(self.UNLOCK_REGEX, message):
+        elif re.match(self.Unlock_info, message):
             self.get_unlock(con, addr, message)
         else:
             return False
@@ -34,73 +34,71 @@ class LockServer(TCPServer):
 
     def get_lock(self, con, addr, text):
         # Handler for file locking requests
-        request = text.splitlines()
-        full_path = request[0].split()[1]
-        duration = int(request[1].split()[1])
-        lock_time = self.lock_file(full_path, duration)
-        if lock_time:
-            return_string = self.LOCK_RESPONSE % (full_path, lock_time)
+        request_lock = text.splitlines()
+        full_path = request_lock[0].split()[1]
+        duration_time = int(request_lock[1].split()[1])
+        lock_time_info = self.lock_file(full_path, duration_time)
+        if lock_time_info:
+            return_string = self.Lock_rep % (full_path, lock_time_info)
         else:
-            return_string = self.FAIL_RESPONSE % (0, str(duration))
+            return_string = self.Fail_rep % (0, str(duration_time))
         con.sendall(return_string)
         return
 
     def get_unlock(self, con, addr, text):
         # Handler for file unlocking requests
-        request = text.splitlines()
-        full_path = request[0].split()[1]
-        lock_time = self.unlock_file(full_path)
-
-        return_string = self.LOCK_RESPONSE % (full_path, lock_time)
-        con.sendall(return_string)
+        request_unlock = text.splitlines()
+        full_path = request_unlock[0].split()[1]
+        unlock_time = self.unlock_file(full_path)
+        return_string_info = self.Lock_rep % (full_path, unlock_time)
+        con.sendall(return_string_info)
         return
 
     def lock_file(self, path, lock_period):
         # Function that attempts to lock a file
         return_time = -1
-        con = db.connect(self.DATABASE)
+        con_lock = db.connect(self.Database_path_name)
         # Exclusive r/w access to the db
-        con.isolation_level = 'EXCLUSIVE'
-        con.execute('BEGIN EXCLUSIVE')
-        current_time = int(time.time())
-        end_time = current_time + lock_period
-
-        cur = con.cursor()
-        cur.execute("SELECT count(*) FROM Locks WHERE Path = ? AND Time > ?", (path, current_time))
-        count = cur.fetchone()[0]
+        con_lock.isolation_level = 'EXCLUSIVE'
+        con_lock.execute('BEGIN EXCLUSIVE')
+        current_time_info = int(time.time())
+        end_time = current_time_info + lock_period
+        cur_lock = con_lock.cursor()
+        cur_lock.execute("SELECT count(*) FROM Locks WHERE Path = ? AND Time > ?", (path, current_time_info))
+        count = cur_lock.fetchone()[0]
         if count is 0:
-            cur.execute("INSERT INTO Locks (Path, Time) VALUES (?, ?)", (path, end_time))
+            cur_lock.execute("INSERT INTO Locks (Path, Time) VALUES (?, ?)", (path, end_time))
             return_time = end_time
         else:
             return_time = False
         # End Exclusive access to the db
-        con.commit()
-        con.close()
+        con_lock.commit()
+        con_lock.close()
         return return_time
 
     def unlock_file(self, path):
         # Function that attempts to unlock a file
         return_time = -1
-        con = db.connect(self.DATABASE)
+        con_unlock = db.connect(self.Database_path_name)
         # Exclusive r/w access to the db
-        con.isolation_level = 'EXCLUSIVE'
-        con.execute('BEGIN EXCLUSIVE')
-        current_time = int(time.time())
-        cur = con.cursor()
-        cur.execute("SELECT count(*) FROM Locks WHERE Path = ? AND Time > ?", (path, current_time))
+        con_unlock.isolation_level = 'EXCLUSIVE'
+        con_unlock.execute('BEGIN EXCLUSIVE')
+        current_time_info = int(time.time())
+        cur = con_unlock.cursor()
+        cur.execute("SELECT count(*) FROM Locks WHERE Path = ? AND Time > ?", (path, current_time_info))
         count = cur.fetchone()[0]
         if count is 0:
-            cur.execute("UPDATE Locks SET Time=? WHERE Path = ? AND Time > ?", (current_time, path, current_time))
+            cur.execute("UPDATE Locks SET Time=? WHERE Path = ? AND Time > ?", (current_time_info, path, current_time_info))
         # End Exclusive access to the db
-        con.commit()
-        con.close()
-        return current_time
+        con_unlock.commit()
+        con_unlock.close()
+        return current_time_info
 
     def create_table(cls):
         # Function that creates the tables for the locking servers database
-        con = db.connect(cls.DATABASE)
-        with con:
-            cur = con.cursor()
+        con_table = db.connect(cls.Database_path_name)
+        with con_table:
+            cur = con_table.cursor()
             cur.execute("CREATE TABLE IF NOT EXISTS Locks(Id INTEGER PRIMARY KEY, Path TEXT, Time INT)")
             cur.execute("CREATE INDEX IF NOT EXISTS PATHS ON Locks(Path)")
 
@@ -108,14 +106,13 @@ class LockServer(TCPServer):
 def main():
     try:
         if len(sys.argv) > 1 and sys.argv[1].isdigit():
-            port = int(sys.argv[1])
-            server = LockServer(port)
+            port_lock_num = int(sys.argv[1])
+            server_info = LockServer(port_lock_num)
         else:
-            server = LockServer()
-        server.listen()
+            server_info = LockServer()
+        server_info.listen()
     except socket.error, msg:
         print "Unable to create socket connection: " + str(msg)
         con = None
-
 
 if __name__ == "__main__": main()
