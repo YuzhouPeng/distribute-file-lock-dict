@@ -19,7 +19,7 @@ Lock_Command = "lock [a-zA-Z0-9_/.]* [0-9]*"
 
 class TCPClient:
     PortNum = 8000
-    HOST = "0.0.0.1"
+    HOST = "0.0.0.0"
     Directory_Port = 7333
     FileServer_Port = 7001
     Directory_Host = HOST
