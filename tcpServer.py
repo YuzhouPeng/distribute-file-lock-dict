@@ -115,7 +115,7 @@ class ThreadHandler(threading.Thread):
             if message == "KILL_SERVICE\n":
                 print "Killing service"
                 self.server.kill_serv(con)
-            elif re.match(self.server.HELO_REGEX, message):
+            elif re.match(self.server.Helo_info, message):
                 self.server.helo(con, addr, message)
             elif self.messageHandler(message, con, addr):
                 None
