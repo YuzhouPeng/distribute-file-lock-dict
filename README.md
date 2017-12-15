@@ -6,7 +6,7 @@ How to use it:
 
 2. Put file you want to upload into the fileserver
 
-3. Run client.py
+3. Run clientServer.py
 
 4. Input "upload + [filename]" to upload your file
 
